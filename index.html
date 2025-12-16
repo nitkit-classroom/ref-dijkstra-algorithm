@@ -1,3 +1,41 @@
-<html>
-    test
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ダイクストラ法 可視化システム</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>ダイクストラ法 アルゴリズム追跡</h1>
+        
+        <div class="controls">
+            <label for="startNode">スタート地点:</label>
+            <select id="startNode">
+                </select>
+            <button id="stepBtn">ステップを進める</button>
+            <button id="resetBtn">リセット</button>
+        </div>
+
+        <div class="status-panel">
+            <p id="statusMessage">スタート地点を選んで開始してください。</p>
+            <p>現在の処理ノード: <span id="currentNodeDisplay">-</span></p>
+        </div>
+
+        <div class="map-container">
+            <img src="image_826fff.jpg" alt="Network Map" class="map-image">
+            <div id="nodesOverlay"></div>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item"><span class="dot visited"></span> 確定済み (Visited)</div>
+            <div class="legend-item"><span class="dot current"></span> 処理中 (Current)</div>
+            <div class="legend-item"><span class="dot neighbor"></span> 更新中 (Neighbor)</div>
+            <div class="legend-item"><span class="dot unvisited"></span> 未確定 (Unvisited)</div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
 </html>

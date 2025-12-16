@@ -1,0 +1,131 @@
+body {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    background-color: #f4f4f4;
+    text-align: center;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.controls {
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: #eee;
+    border-radius: 5px;
+}
+
+button {
+    padding: 8px 16px;
+    font-size: 16px;
+    cursor: pointer;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    margin-left: 10px;
+}
+
+button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+button#resetBtn {
+    background-color: #6c757d;
+}
+
+.status-panel {
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: #333;
+}
+
+/* マップ表示エリア */
+.map-container {
+    position: relative;
+    width: 100%;
+    max-width: 800px; /* 画像の幅に合わせて調整 */
+    margin: 0 auto;
+}
+
+.map-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    border: 1px solid #ddd;
+}
+
+/* ノード（家）のスタイル */
+.node {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background-color: white;
+    border: 2px solid #333;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: 12px;
+    font-weight: bold;
+    transform: translate(-50%, -50%); /* 中心を座標に合わせる */
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    z-index: 10;
+}
+
+/* ノード内の距離表示 */
+.dist-label {
+    font-size: 14px;
+    color: #d9534f;
+}
+
+.node-id {
+    font-size: 10px;
+    color: #666;
+    margin-bottom: -2px;
+}
+
+/* ノードの状態色 */
+.node.visited {
+    background-color: #28a745; /* 緑: 確定 */
+    color: white;
+    border-color: #1e7e34;
+}
+.node.visited .dist-label, .node.visited .node-id { color: white; }
+
+.node.current {
+    background-color: #ffc107; /* 黄: 現在処理中 */
+    border-color: #d39e00;
+    transform: translate(-50%, -50%) scale(1.2);
+    z-index: 20;
+}
+
+.node.neighbor {
+    background-color: #17a2b8; /* 青: 更新対象 */
+    color: white;
+}
+.node.neighbor .dist-label, .node.neighbor .node-id { color: white; }
+
+/* 凡例 */
+.legend {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+.legend-item { display: flex; align-items: center; }
+.dot { width: 15px; height: 15px; display: inline-block; margin-right: 5px; border-radius: 50%; border: 1px solid #ccc;}
+.dot.visited { background-color: #28a745; }
+.dot.current { background-color: #ffc107; }
+.dot.neighbor { background-color: #17a2b8; }
+.dot.unvisited { background-color: white; }
