@@ -1,3 +1,9 @@
+/* Dijkstra Visualization System - Complete Script
+  Target: index.html
+*/
+
+// --- 1. 設定データ ---
+
 // ノードの座標（画像上の配置位置 %）
 const nodePositions = {
     1: { top: 18, left: 24 },
@@ -13,7 +19,7 @@ const nodePositions = {
 };
 
 // グラフデータ（隣接リスト）: { 接続先ノード: コスト }
-// 修正済み: 3と7の間はコスト3
+// 要件: 3番と7番の間はコスト「3」
 const graph = {
     1: { 2: 4, 4: 3, 8: 5 },
     2: { 1: 4, 3: 4, 4: 3, 5: 3 },
@@ -27,15 +33,17 @@ const graph = {
     10: { 8: 4, 9: 3 }
 };
 
-// 状態管理変数
-let distances = {};
-let visited = new Set();
-let unvisited = new Set();
-let currentNode = null; // 現在処理中のノード
-let isProcessing = false; // trueなら「更新中（計算前）」、falseなら「次のノード選択待ち」
-let isFinished = false;
+// --- 2. 状態管理変数 ---
 
-// DOM要素
+let distances = {};      // 各ノードまでの最短距離
+let visited = new Set(); // 確定済みノード
+let unvisited = new Set(); // 未確定ノード
+let currentNode = null;  // 現在着目しているノード
+let isProcessing = false; // true=更新計算待ち(Phase2), false=ノード選択待ち(Phase1)
+let isFinished = false;  // 全探索終了フラグ
+
+// --- 3. DOM要素の取得 ---
+
 const nodesOverlay = document.getElementById('nodesOverlay');
 const startNodeSelect = document.getElementById('startNode');
 const stepBtn = document.getElementById('stepBtn');
@@ -43,8 +51,11 @@ const resetBtn = document.getElementById('resetBtn');
 const statusMessage = document.getElementById('statusMessage');
 const currentNodeDisplay = document.getElementById('currentNodeDisplay');
 
-// 初期化処理
+// --- 4. 初期化とリセット ---
+
+// 初回読み込み時の処理
 function init() {
+    // プルダウンメニューの生成
     startNodeSelect.innerHTML = '';
     for (let i = 1; i <= 10; i++) {
         const option = document.createElement('option');
@@ -52,23 +63,27 @@ function init() {
         option.text = `家 ${i}`;
         startNodeSelect.appendChild(option);
     }
+    
+    // グラフの初期化を実行
     resetGraph();
 }
 
-// グラフのリセット
+// グラフを初期状態に戻す
 function resetGraph() {
     const startNode = parseInt(startNodeSelect.value);
     distances = {};
     visited = new Set();
     unvisited = new Set();
     
+    // 距離の初期化（スタート地点は0、他は無限大）
     for (let i = 1; i <= 10; i++) {
         distances[i] = i === startNode ? 0 : Infinity;
         unvisited.add(i);
     }
     
+    // 状態のリセット
     currentNode = null;
-    isProcessing = false; // フェーズリセット
+    isProcessing = false;
     isFinished = false;
     stepBtn.disabled = false;
     stepBtn.textContent = "ステップを進める";
@@ -77,7 +92,8 @@ function resetGraph() {
     updateUI("スタート地点を選択してステップを開始してください。");
 }
 
-// UIの描画更新
+// --- 5. UI描画処理 ---
+
 function updateUI(message) {
     nodesOverlay.innerHTML = '';
     
@@ -87,6 +103,7 @@ function updateUI(message) {
         el.style.top = nodePositions[i].top + '%';
         el.style.left = nodePositions[i].left + '%';
         
+        // 距離テキスト（Infinityなら∞）
         const distText = distances[i] === Infinity ? '∞' : distances[i];
         
         el.innerHTML = `
@@ -94,20 +111,19 @@ function updateUI(message) {
             <div class="dist-label">${distText}</div>
         `;
         
-        // --- 色分けの優先順位 ---
+        // クラスの付与（色変えロジック）
         // 1. 確定済み (Green)
         if (visited.has(i)) {
             el.classList.add('visited');
         } 
-        // 2. 現在処理中 (Yellow)
+        // 2. 現在注目中 (Yellow)
         else if (i === currentNode) {
             el.classList.add('current');
         } 
-        // 3. 処理中ノードの隣接かつ未確定 (Blue)
-        else if (currentNode && graph[currentNode][i] && !visited.has(i)) {
+        // 3. 注目ノードの隣接かつ未確定 (Blue) - Phase1のときのみ表示
+        else if (currentNode && isProcessing && graph[currentNode][i] && !visited.has(i)) {
             el.classList.add('neighbor');
         }
-        // 4. それ以外 (White/Unvisited)
         
         nodesOverlay.appendChild(el);
     }
@@ -116,24 +132,28 @@ function updateUI(message) {
     currentNodeDisplay.textContent = currentNode ? `家 ${currentNode}` : "-";
 }
 
-// ステップ進行（2段階構成）
+// --- 6. ステップ実行ロジック (メイン処理) ---
+
 function nextStep() {
+    // 実行中はスタート地点変更不可
     startNodeSelect.disabled = true;
 
     if (isFinished) return;
 
-    // --- フェーズ1: 次のノードを選択してハイライト ---
+    // === Phase 1: 次の最小ノードを選択 ===
     if (!isProcessing) {
         if (unvisited.size === 0) {
             finishSearch();
             return;
         }
 
-        // 未確定ノードの中で最小距離のノードを探す
-        // (注: Setの走査順が挿入順(1,2,3...)なので、距離が同じなら若い番号が優先されます)
+        // 未確定ノードの中で距離が最小のものを探す
+        // (同じ距離なら番号が若い順にヒットするよう実装)
         let minNode = null;
         let minDist = Infinity;
 
+        // Setの反復順序は挿入順(1,2,3...)なので、単純ループで「距離がより小さい場合」のみ更新すれば
+        // 同着の場合は自然と若い番号が維持される
         unvisited.forEach(node => {
             if (distances[node] < minDist) {
                 minDist = distances[node];
@@ -141,118 +161,88 @@ function nextStep() {
             }
         });
 
-        // 到達不可能な場合
+        // どこにも行けない場合
         if (minNode === null || minDist === Infinity) {
             updateUI("残りのノードへは到達できません。終了します。");
-            isFinished = true;
-            stepBtn.disabled = true;
+            finishSearch();
             return;
         }
 
-        // ノードを選択状態にする
+        // ノードを選択（まだ確定はしない）
         currentNode = minNode;
-        isProcessing = true; 
+        isProcessing = true; // 次のクリックでPhase2へ
 
-        updateUI(`家${currentNode}を選択しました。隣接する家を確認します...`);
+        updateUI(`家${currentNode}を選択 (暫定距離: ${distances[currentNode]})。隣接する家を確認します...`);
     } 
     
-    // --- フェーズ2: 距離の更新と確定 ---
+    // === Phase 2: 隣接ノードの計算・更新・確定 ===
     else {
         const neighbors = graph[currentNode];
         let updateLog = [];
 
-        // ★修正点: 隣接ノードを「番号の若い順」にソートして処理する
+        // 要件: 番号の若い順に処理する
+        // Object.keysで取得後、数値昇順にソート
         const sortedNeighborKeys = Object.keys(neighbors)
-            .map(Number)              // 文字列のキーを数値に変換
-            .sort((a, b) => a - b);   // 昇順に並び替え
+            .map(Number)
+            .sort((a, b) => a - b);
 
-        // ソート順に従ってループ処理
+        // ソート順に計算
         for (const neighbor of sortedNeighborKeys) {
             const weight = neighbors[neighbor];
             
+            // 未確定ノードのみ計算対象
             if (!visited.has(neighbor)) {
                 const newDist = distances[currentNode] + weight;
+                
+                // より短い経路が見つかったら更新
                 if (newDist < distances[neighbor]) {
                     distances[neighbor] = newDist;
-                    updateLog.push(`家${neighbor}を${newDist}に更新`);
+                    updateLog.push(`家${neighbor} (距離${newDist}に更新)`);
                 }
             }
         }
 
-        // 確定済みリストへ移動
+        // 現在のノードを確定リストへ移動
         visited.add(currentNode);
         unvisited.delete(currentNode);
         
-        // メッセージ作成
-        const msg = updateLog.length > 0 
-            ? `計算完了: ${updateLog.join(', ')}。家${currentNode}を確定しました。`
-            : `更新なし。家${currentNode}を確定しました。`;
+        // ログメッセージ生成
+        const logText = updateLog.length > 0 
+            ? `計算結果: ${updateLog.join(', ')}。`
+            : `更新なし。`;
+        const msg = `${logText} 家${currentNode}を確定しました。`;
 
-        // 状態リセット
+        // フェーズリセット
         isProcessing = false; 
         currentNode = null; 
 
         updateUI(msg);
 
-        // 終了判定
-        if (unvisited.size === 0) {
-            finishSearch();
-        }
-    }
-}
-    
-    // --- フェーズ2: 距離の更新と確定 ---
-    else {
-        const neighbors = graph[currentNode];
-        let updateLog = [];
-
-        // 隣接ノードの距離更新（緩和）
-        for (const [neighborStr, weight] of Object.entries(neighbors)) {
-            const neighbor = parseInt(neighborStr);
-            if (!visited.has(neighbor)) {
-                const newDist = distances[currentNode] + weight;
-                if (newDist < distances[neighbor]) {
-                    distances[neighbor] = newDist;
-                    updateLog.push(`家${neighbor}を${newDist}に更新`);
-                }
-            }
-        }
-
-        // 確定済みリストへ移動
-        visited.add(currentNode);
-        unvisited.delete(currentNode);
-        
-        // メッセージ作成
-        const msg = updateLog.length > 0 
-            ? `計算完了: ${updateLog.join(', ')}。家${currentNode}を確定しました。`
-            : `更新なし。家${currentNode}を確定しました。`;
-
-        // 状態リセット
-        isProcessing = false; 
-        currentNode = null; // 一旦選択解除（次のSelectフェーズで見やすくするため）
-
-        updateUI(msg);
-
-        // 終了判定
+        // すべて確定したら終了
         if (unvisited.size === 0) {
             finishSearch();
         }
     }
 }
 
+// 探索終了処理
 function finishSearch() {
     isFinished = true;
     stepBtn.disabled = true;
     stepBtn.textContent = "探索完了";
-    updateUI("すべての探索が終了しました！");
+    // 最後のメッセージを表示
+    statusMessage.textContent = `${statusMessage.textContent} すべての探索が終了しました！`;
 }
 
-// イベントリスナー
+// --- 7. イベントリスナー設定 ---
+
 stepBtn.addEventListener('click', nextStep);
+
 resetBtn.addEventListener('click', () => {
     resetGraph();
 });
+
 startNodeSelect.addEventListener('change', resetGraph);
 
-// 初期実行
+// --- 8. 開始 ---
 init();
