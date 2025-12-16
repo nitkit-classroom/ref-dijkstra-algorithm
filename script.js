@@ -129,7 +129,8 @@ function nextStep() {
             return;
         }
 
-        // 最小距離のノードを探す
+        // 未確定ノードの中で最小距離のノードを探す
+        // (注: Setの走査順が挿入順(1,2,3...)なので、距離が同じなら若い番号が優先されます)
         let minNode = null;
         let minDist = Infinity;
 
@@ -148,12 +149,57 @@ function nextStep() {
             return;
         }
 
-        // ノードを選択状態にする（まだVisitedにはしない）
+        // ノードを選択状態にする
         currentNode = minNode;
-        isProcessing = true; // 次回クリック時は「更新」処理を行う
+        isProcessing = true; 
 
         updateUI(`家${currentNode}を選択しました。隣接する家を確認します...`);
     } 
+    
+    // --- フェーズ2: 距離の更新と確定 ---
+    else {
+        const neighbors = graph[currentNode];
+        let updateLog = [];
+
+        // ★修正点: 隣接ノードを「番号の若い順」にソートして処理する
+        const sortedNeighborKeys = Object.keys(neighbors)
+            .map(Number)              // 文字列のキーを数値に変換
+            .sort((a, b) => a - b);   // 昇順に並び替え
+
+        // ソート順に従ってループ処理
+        for (const neighbor of sortedNeighborKeys) {
+            const weight = neighbors[neighbor];
+            
+            if (!visited.has(neighbor)) {
+                const newDist = distances[currentNode] + weight;
+                if (newDist < distances[neighbor]) {
+                    distances[neighbor] = newDist;
+                    updateLog.push(`家${neighbor}を${newDist}に更新`);
+                }
+            }
+        }
+
+        // 確定済みリストへ移動
+        visited.add(currentNode);
+        unvisited.delete(currentNode);
+        
+        // メッセージ作成
+        const msg = updateLog.length > 0 
+            ? `計算完了: ${updateLog.join(', ')}。家${currentNode}を確定しました。`
+            : `更新なし。家${currentNode}を確定しました。`;
+
+        // 状態リセット
+        isProcessing = false; 
+        currentNode = null; 
+
+        updateUI(msg);
+
+        // 終了判定
+        if (unvisited.size === 0) {
+            finishSearch();
+        }
+    }
+}
     
     // --- フェーズ2: 距離の更新と確定 ---
     else {
